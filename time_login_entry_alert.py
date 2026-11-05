@@ -11,12 +11,39 @@ from selenium.common.exceptions import WebDriverException
 import time
 import logging
 import os
+import sys
 from datetime import datetime
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
+
+def safe_print(message):
+    """Print safely when running with a console, including Unicode messages."""
+    if sys.stdout is None:
+        return
+    try:
+        print(message)
+    except UnicodeEncodeError:
+        encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+        try:
+            safe_message = str(message).encode(encoding, errors="replace").decode(
+                encoding, errors="replace"
+            )
+            print(safe_message)
+        except Exception:
+            pass
+
+
+# Use UTF-8 for redirected output where streams are available.
+for _stream in (sys.stdout, sys.stderr):
+    if _stream is not None and hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except (OSError, ValueError):
+            pass
+
 
 # ================== CONFIG ==================
 EMPLOYER_NUMBER = "6419"
@@ -41,6 +68,7 @@ RECIPIENT_EMAIL = "devanantony@yahoo.com.sg"
 
 logging.basicConfig(
     filename=LOG_FILE,
+    encoding="utf-8",
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
@@ -59,8 +87,8 @@ def get_installed_chrome_version():
 # ========== DOWNLOAD MATCHING CHROMEDRIVER ==========
 def download_matching_chromedriver(chrome_version):
     major = chrome_version.split(".")[0]
-    print(f"🔍 Installed Chrome version: {chrome_version}")
-    print(f"🔍 Fetching ChromeDriver for major version: {major}")
+    safe_print(f"🔍 Installed Chrome version: {chrome_version}")
+    safe_print(f"🔍 Fetching ChromeDriver for major version: {major}")
 
     url = "https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json"
 
@@ -77,7 +105,7 @@ def download_matching_chromedriver(chrome_version):
             if d["platform"] == "win64"
         )
 
-        print(f"⬇️ Downloading ChromeDriver from:\n{driver_url}")
+        safe_print(f"⬇️ Downloading ChromeDriver from:\n{driver_url}")
 
         zip_data = requests.get(driver_url, timeout=30).content
 
@@ -91,7 +119,7 @@ def download_matching_chromedriver(chrome_version):
         return True
 
     except Exception as e:
-        print(f"❌ ChromeDriver download failed: {e}")
+        safe_print(f"❌ ChromeDriver download failed: {e}")
         return False
 
 # ========== EMAIL ==========
@@ -121,10 +149,10 @@ def send_email_alert(subject, message, attachments=None):
             server.send_message(msg)
 
     except Exception as e:
-        print(f"❌ Email failed: {e}")
+        safe_print(f"❌ Email failed: {e}")
 
 def log_and_print(message, error=False, success=False):
-    print(message)
+    safe_print(message)
     if error:
         logging.error(message)
         send_email_alert("⚠️ TimeWatch Script Error", message, [LOG_FILE])
@@ -149,7 +177,7 @@ def start_driver():
         )
 
     except WebDriverException:
-        print("⚠️ ChromeDriver mismatch detected")
+        safe_print("⚠️ ChromeDriver mismatch detected")
 
         chrome_version = get_installed_chrome_version()
         logging.info(f"Installed Chrome: {chrome_version}")
@@ -159,7 +187,7 @@ def start_driver():
         if not download_matching_chromedriver(chrome_version):
             raise RuntimeError("❌ ChromeDriver update failed")
 
-        print("🔁 Retrying ChromeDriver startup...")
+        safe_print("🔁 Retrying ChromeDriver startup...")
         return webdriver.Chrome(
             service=Service(CHROMEDRIVER_PATH),
             options=options
