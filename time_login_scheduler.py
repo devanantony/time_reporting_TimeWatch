@@ -142,6 +142,11 @@ def main():
 
         login_time = datetime.fromisoformat(state["login_time"])
         logout_time = datetime.fromisoformat(state["logout_time"])
+        if state.get("login_done") and not state.get("logout_done"):
+            logging.info(
+                "PENDING EXIT | Expected logout time: %s",
+                logout_time.strftime("%Y-%m-%d %H:%M:%S")
+            )
 
         # LOGIN TRIGGER
         if not state.get("login_done") and now >= login_time:
@@ -151,6 +156,17 @@ def main():
             execute_script(
                 LOGIN_SCRIPT, "LOGIN ENTRY", state
             )
+
+            if login_success:
+                logging.info(
+                    "LOGIN ENTRY SUCCESSFUL | Next expected EXIT: %s",
+                    logout_time.strftime("%Y-%m-%d %H:%M:%S")
+                )
+            else:
+                logging.error(
+                    "LOGIN ENTRY FAILED | Expected EXIT remains scheduled for: %s",
+                    logout_time.strftime("%Y-%m-%d %H:%M:%S")
+                )
 
         # LOGOUT TRIGGER
         if (
