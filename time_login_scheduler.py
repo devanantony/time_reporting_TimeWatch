@@ -1,4 +1,3 @@
-
 import os
 import sys
 import time
@@ -11,7 +10,6 @@ from pathlib import Path
 # --------------------------------------------------
 # CONFIGURATION
 # --------------------------------------------------
-
 BASE_DIR = Path(__file__).resolve().parent
 
 LOGIN_SCRIPT = BASE_DIR / "time_login_entry_alert.py"
@@ -29,7 +27,6 @@ EXIT_DELAY_HOURS = 9
 # --------------------------------------------------
 # LOGGING
 # --------------------------------------------------
-
 logging.basicConfig(
     filename=LOG_FILE,
     level=logging.INFO,
@@ -40,7 +37,6 @@ logging.basicConfig(
 # --------------------------------------------------
 # STATE MANAGEMENT
 # --------------------------------------------------
-
 def load_state():
     if STATE_FILE.exists():
         try:
@@ -52,7 +48,6 @@ def load_state():
 
     return {}
 
-
 def save_state(state):
     import json
     temp_file = STATE_FILE.with_suffix(".tmp")
@@ -62,11 +57,9 @@ def save_state(state):
 
     os.replace(temp_file, STATE_FILE)
 
-
 # --------------------------------------------------
 # SCRIPT EXECUTION
 # --------------------------------------------------
-
 def execute_script(script_path, event_name, state):
     if not script_path.exists():
         logging.error("%s script not found: %s", event_name, script_path)
@@ -100,16 +93,33 @@ def execute_script(script_path, event_name, state):
         logging.exception("Failed to execute %s", event_name)
         return False
 
-
 # --------------------------------------------------
 # MAIN SCHEDULER
 # --------------------------------------------------
-
 def main():
     logging.info("Time login scheduler started")
 
+    last_weekend_log_date = None
+
     while True:
         now = datetime.now()
+
+        # Monday=0 ... Friday=4, Saturday=5, Sunday=6.
+        # Keep the scheduler alive, but do not create or execute schedules
+        # on weekends. This also protects against a Friday-started process
+        # that remains running through Saturday and Sunday.
+        if now.weekday() >= 5:
+            weekend_date = now.date().isoformat()
+            if last_weekend_log_date != weekend_date:
+                logging.info(
+                    "Weekend detected (%s). Login/logout scheduling is disabled.",
+                    now.strftime("%A %Y-%m-%d")
+                )
+                last_weekend_log_date = weekend_date
+
+            time.sleep(CHECK_INTERVAL)
+            continue
+
         today = now.date().isoformat()
 
         state = load_state()
@@ -153,7 +163,7 @@ def main():
             state["login_done"] = True
             save_state(state)
 
-            execute_script(
+            login_success = execute_script(
                 LOGIN_SCRIPT, "LOGIN ENTRY", state
             )
 
@@ -182,7 +192,6 @@ def main():
             )
 
         time.sleep(CHECK_INTERVAL)
-
 
 if __name__ == "__main__":
     try:

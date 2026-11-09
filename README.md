@@ -75,10 +75,27 @@ Look for the configuration block near the top of each file and update:
 - employer number
 - employee number
 - password
-- sender email / recipient email
-- SMTP settings if you use email notifications
 
-Important: do not commit or share real credentials in a public repository.
+Email settings are read from environment variables by both alert scripts:
+
+| Variable | Required | Default / purpose |
+|---|---:|---|
+| `TIMEWATCH_SENDER_EMAIL` | Yes | SMTP account used to send alerts |
+| `TIMEWATCH_SENDER_PASSWORD` | Yes | SMTP password or provider app password |
+| `TIMEWATCH_RECIPIENT_EMAIL` | Yes | Address that receives alerts |
+| `TIMEWATCH_SMTP_SERVER` | No | SMTP host; defaults to `smtp.gmail.com` |
+| `TIMEWATCH_SMTP_PORT` | No | SMTP port; defaults to `587` (STARTTLS) |
+
+For Gmail, use an app password if the account requires one; a regular account
+password may not be accepted. Configure these values in Windows Environment
+Variables before starting the script, GUI, or scheduler. Restart already-running
+processes after changing environment variables so they inherit the new settings.
+The scripts log missing settings and SMTP delivery errors to `log_entry.txt` or
+`log_exit.txt`; successful delivery is also recorded there.
+
+Do not commit or share real credentials in a public repository. If an SMTP
+password was previously stored in source code or committed, revoke it and create
+a replacement before configuring the environment variables.
 
 ## Usage
 
