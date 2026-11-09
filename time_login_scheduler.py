@@ -72,7 +72,9 @@ def execute_script(script_path, event_name, state):
             [sys.executable, str(script_path)],
             cwd=str(BASE_DIR),
             capture_output=True,
-            text=True
+            text=True,
+            encoding="utf-8",
+            errors="replace"
         )
 
         logging.info(
@@ -142,17 +144,6 @@ def main():
                 "logout_done": False,
                 "pending_exit_logged": False
             }
-            # LOG PENDING EXIT ONLY ONCE
-            if (
-                state.get("login_done")
-                and not state.get("logout_done")
-                and not state.get("pending_exit_logged", False)
-            ):
-                logging.info(
-                    "PENDING EXIT | Expected logout time: %s",
-                    logout_time.strftime("%Y-%m-%d %H:%M:%S")
-                )
-            state["pending_exit_logged"] = True
             save_state(state)
 
             logging.info(
@@ -163,11 +154,17 @@ def main():
 
         login_time = datetime.fromisoformat(state["login_time"])
         logout_time = datetime.fromisoformat(state["logout_time"])
-        if state.get("login_done") and not state.get("logout_done"):
+        if (
+            state.get("login_done")
+            and not state.get("logout_done")
+            and not state.get("pending_exit_logged", False)
+        ):
             logging.info(
                 "PENDING EXIT | Expected logout time: %s",
                 logout_time.strftime("%Y-%m-%d %H:%M:%S")
             )
+            state["pending_exit_logged"] = True
+            save_state(state)
 
         # LOGIN TRIGGER
         if not state.get("login_done") and now >= login_time:
