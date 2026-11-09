@@ -139,9 +139,20 @@ def main():
                 "login_time": login_time.isoformat(),
                 "logout_time": logout_time.isoformat(),
                 "login_done": False,
-                "logout_done": False
+                "logout_done": False,
+                "pending_exit_logged": False
             }
-
+            # LOG PENDING EXIT ONLY ONCE
+            if (
+                state.get("login_done")
+                and not state.get("logout_done")
+                and not state.get("pending_exit_logged", False)
+            ):
+                logging.info(
+                    "PENDING EXIT | Expected logout time: %s",
+                    logout_time.strftime("%Y-%m-%d %H:%M:%S")
+                )
+            state["pending_exit_logged"] = True
             save_state(state)
 
             logging.info(
